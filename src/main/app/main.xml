@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+    <flow name="main_Flow">
+        <logger message="Just created java payload with a name and address.  About to send this object to JMS" level="INFO" doc:name="Logger"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+	name: payload.name,
+	address: payload.address
+}]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="after json to object.  #[payload]" level="INFO" doc:name="Logger"/>
+        <vm:outbound-endpoint exchange-pattern="one-way" path="test-queue-in" doc:name="VM"/>
+        <logger message="Just send message to JMS and about to convert payload to JSON for reponse to caller." level="INFO" doc:name="Logger"/>
+        <json:object-to-json-transformer doc:name="Object to JSON"/>
+    </flow>
+    <flow name="receiving-queue_Flow">
+        <vm:inbound-endpoint exchange-pattern="one-way" path="test-queue-in" doc:name="VM"/>
+        <logger message="just got a message from JMS on the receiver end." level="INFO" doc:name="Logger"/>
+        <json:object-to-json-transformer doc:name="Object to JSON"/>
+        <logger message="Got a message off the queue. :: #[payload] :: Name = #[json:name]" level="INFO" doc:name="Logger"/>
+        <flow-ref name="some-business-logic-Sub_Flow" doc:name="some-business-logic-Sub_Flow"/>
+        <logger message="new payload from subflow :: #[json:newMessage]" level="INFO" doc:name="Logger"/>
+        <logger message="Payload from DataWeave = #[payload]" level="INFO" doc:name="Logger"/>
+    </flow>
+    <sub-flow name="some-business-logic-Sub_Flow">
+        <logger message="Started business logic Sub Flow" level="INFO" doc:name="Logger"/>
+        <logger message="Name = #[json:name], Address = #[json:address]" level="INFO" doc:name="Logger"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	newMessage : payload.name ++ payload.address
+}]]></dw:set-payload>
+        </dw:transform-message>
+    </sub-flow>
+</mule>

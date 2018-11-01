@@ -1,0 +1,22 @@
+#%RAML 1.0
+title: Sample API
+
+types: 
+  addressType:
+    properties: 
+      name:
+        type: string
+        required: true
+      address:
+        type: string
+        required: true
+      
+/testEndpoint: 
+  post: 
+    body: 
+      application/json:
+        type: addressType
+    responses: 
+      200:
+        body: 
+          application/json: 
